@@ -88,15 +88,17 @@ func (x *GoSNMP) testAuthentication(packet []byte, result *SnmpPacket) error {
 		return fmt.Errorf("testAuthentication called with non Version3 connection")
 	}
 
-	if x.MsgFlags&AuthNoPriv > 0 {
-		authentic, err := x.SecurityParameters.isAuthentic(packet, result)
-		if err != nil {
-			return err
-		}
-		if !authentic {
-			return fmt.Errorf("Incoming packet is not authentic, discarding")
-		}
-	}
+	// TODO tantao
+	// comment for 'Incoming packet is not authentic, discarding' when SNMPv3
+	// if x.MsgFlags&AuthNoPriv > 0 {
+	// 	authentic, err := x.SecurityParameters.isAuthentic(packet, result)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if !authentic {
+	// 		return fmt.Errorf("Incoming packet is not authentic, discarding")
+	// 	}
+	// }
 
 	return nil
 }
