@@ -16,6 +16,7 @@ import (
 	"math/rand"
 	"net"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -604,19 +605,18 @@ func ToBigInt(value interface{}) *big.Int {
 func ToString(asn1 Asn1BER, value interface{}) string {
 	switch asn1 {
 	case OctetString:
-		bs :=  value.([]byte)
+		bs := value.([]byte)
 		for _, c := range bs {
 			switch {
-				case c >= 0x20 && c <= 0x7e:
-					// printable character including space
-				case c >= 0x09 && c <= 0x0d:
-					// '\t', '\n', '\v', '\f', '\r'
-				default:
-					return toHexStr(bs, ":")
-				}
-		   }
-		   return string(bs)
+			case c >= 0x20 && c <= 0x7e:
+				// printable character including space
+			case c >= 0x09 && c <= 0x0d:
+				// '\t', '\n', '\v', '\f', '\r'
+			default:
+				return toHexStr(bs, ":")
+			}
 		}
+		return string(bs)
 	case ObjectIdentifier, IPAddress, NsapAddress:
 		return value.(string)
 	default:
