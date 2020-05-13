@@ -1,8 +1,10 @@
 module github.com/3th1nk/gosnmp
 
-replace github.com/soniah/gosnmp => github.com/3th1nk/gosnmp
+go 1.13
 
 require (
-	github.com/golang/mock v1.2.0
-	github.com/stretchr/testify v1.3.0
+	github.com/soniah/gosnmp v1.26.0
+	github.com/stretchr/testify v1.5.1
 )
+
+replace github.com/soniah/gosnmp => github.com/3th1nk/gosnmp v0.0.0
