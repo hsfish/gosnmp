@@ -7,4 +7,4 @@ require (
 	github.com/stretchr/testify v1.5.1
 )
 
-replace github.com/soniah/gosnmp => github.com/3th1nk/gosnmp v0.0.0
+replace github.com/soniah/gosnmp => github.com/3th1nk/gosnmp v1.26.9
