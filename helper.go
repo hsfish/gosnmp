@@ -581,13 +581,11 @@ func parseLength(bytes []byte) (length int, cursor int) {
 		byteLen := len(bytes)
 		for i := 0; i < numOctets; i++ {
 			// if data length less than length，not enough data
-			if byteLen > 2+i {
-				length <<= 8
-				length += int(bytes[2+i])
-			} else {
-				length += byteLen
+			if byteLen <= 2+i {
 				break
 			}
+			length <<= 8
+			length += int(bytes[2+i])
 		}
 		length += 2 + numOctets
 		cursor += 2 + numOctets
