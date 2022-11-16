@@ -1,7 +1,8 @@
-// Copyright 2012-2020 The GoSNMP Authors. All rights reserved.  Use of this
+// Copyright 2012 The GoSNMP Authors. All rights reserved.  Use of this
 // source code is governed by a BSD-style license that can be found in the
 // LICENSE file.
 
+//go:build all || helper
 // +build all helper
 
 package gosnmp
@@ -15,30 +16,45 @@ import (
 
 // https://www.scadacore.com/tools/programming-calculators/online-hex-converter/ is useful
 
-func TestOidToString(t *testing.T) {
-	oid := []int{1, 2, 3, 4, 5}
-	expected := ".1.2.3.4.5"
-	result := oidToString(oid)
+func TestParseObjectIdentifier(t *testing.T) {
+	oid := []byte{43, 6, 1, 2, 1, 31, 1, 1, 1, 10, 143, 255, 255, 255, 127}
+	expected := ".1.3.6.1.2.1.31.1.1.1.10.4294967295"
 
-	if result != expected {
-		t.Errorf("oidToString(%v) = %s, want %s", oid, result, expected)
+	buf, err := parseObjectIdentifier(oid)
+	if err != nil {
+		t.Errorf("parseObjectIdentifier(%v) want %s, error: %v", oid, expected, err)
+	}
+	result := string(buf)
+
+	if string(result) != expected {
+		t.Errorf("parseObjectIdentifier(%v) = %s, want %s", oid, result, expected)
 	}
 }
 
-func TestWithAnotherOid(t *testing.T) {
-	oid := []int{4, 3, 2, 1, 3}
-	expected := ".4.3.2.1.3"
-	result := oidToString(oid)
-
-	if result != expected {
-		t.Errorf("oidToString(%v) = %s, want %s", oid, result, expected)
+func TestParseObjectIdentifierWithOtherOid(t *testing.T) {
+	oid := []byte{43, 6, 3, 30, 11, 1, 10}
+	expected := ".1.3.6.3.30.11.1.10"
+	buf, err := parseObjectIdentifier(oid)
+	if err != nil {
+		t.Errorf("parseObjectIdentifier(%v) want %s, error: %v", oid, expected, err)
+	}
+	result := string(buf)
+	if string(result) != expected {
+		t.Errorf("parseObjectIdentifier(%v) = %s, want %s", oid, result, expected)
 	}
 }
 
-func BenchmarkOidToString(b *testing.B) {
-	oid := []int{1, 2, 3, 4, 5}
+func BenchmarkParseObjectIdentifier(b *testing.B) {
+	oid := []byte{43, 6, 3, 30, 11, 1, 10}
 	for i := 0; i < b.N; i++ {
-		oidToString(oid)
+		parseObjectIdentifier(oid)
+	}
+}
+
+func BenchmarkMarshalObjectIdentifier(b *testing.B) {
+	oid := ".1.3.6.3.30.11.1.10"
+	for i := 0; i < b.N; i++ {
+		marshalObjectIdentifier(oid)
 	}
 }
 
@@ -55,6 +71,8 @@ var testsMarshalUint32 = []testsMarshalUint32T{
 	{65537, []byte{0x01, 0x00, 0x01}},          // FFFF + 2
 	{16777217, []byte{0x01, 0x00, 0x00, 0x01}}, // FFFFFF + 2
 	{18542501, []byte{0x01, 0x1a, 0xef, 0xa5}},
+	{2147483647, []byte{0x7f, 0xff, 0xff, 0xff}},
+	{2147483648, []byte{0x00, 0x80, 0x00, 0x0, 0x0}},
 }
 
 func TestMarshalUint32(t *testing.T) {
@@ -83,12 +101,12 @@ var testsMarshalInt32 = []struct {
 	{-2147483648, []byte{0x80, 0x00, 0x00, 0x00}},
 	{-16777217, []byte{0xfe, 0xff, 0xff, 0xff}},
 	{-16777216, []byte{0xff, 0x00, 0x00, 0x00}},
-	{-65537, []byte{0xff, 0xfe, 0xff, 0xff}},
-	{-65536, []byte{0xff, 0xff, 0x00, 0x00}},
-	{-257, []byte{0xff, 0xff, 0xfe, 0xff}},
-	{-256, []byte{0xff, 0xff, 0xff, 0x00}},
-	{-2, []byte{0xff, 0xff, 0xff, 0xfe}},
-	{-1, []byte{0xff, 0xff, 0xff, 0xff}},
+	{-65537, []byte{0xfe, 0xff, 0xff}},
+	{-65536, []byte{0xff, 0x00, 0x00}},
+	{-257, []byte{0xfe, 0xff}},
+	{-256, []byte{0xff, 0x00}},
+	{-2, []byte{0xfe}},
+	{-1, []byte{0xff}},
 }
 
 func TestMarshalInt32(t *testing.T) {

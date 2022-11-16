@@ -7,23 +7,40 @@ package main
 import (
 	"fmt"
 	"log"
+	"syscall"
+	"time"
 
 	g "github.com/gosnmp/gosnmp"
 )
 
 func main() {
-
-	// Default is a pointer to a GoSNMP struct that contains sensible defaults
-	// eg port 161, community public, etc
-	g.Default.Target = "192.168.1.10"
-	err := g.Default.Connect()
+	// build our own GoSNMP struct, rather than using g.Default
+	params := &g.GoSNMP{
+		Target:                  "192.168.1.1",
+		Port:                    161,
+		Version:                 g.Version2c,
+		Community:               "public",
+		Timeout:                 time.Duration(30) * time.Second,
+		UseUnconnectedUDPSocket: false,
+		// Use a the Control function to bind the underlying socket
+		// to the VRF device on Linux. The VRF must already exists.
+		// https://www.kernel.org/doc/Documentation/networking/vrf.txt
+		Control: func(_, _ string, c syscall.RawConn) error {
+			return c.Control(func(fd uintptr) {
+				syscall.BindToDevice(int(fd), "VRF1")
+			})
+		},
+		// Specify an IP address within the VRF
+		LocalAddr: "192.168.1.2:0",
+	}
+	err := params.Connect()
 	if err != nil {
 		log.Fatalf("Connect() err: %v", err)
 	}
-	defer g.Default.Conn.Close()
+	defer params.Conn.Close()
 
 	oids := []string{"1.3.6.1.2.1.1.4.0", "1.3.6.1.2.1.1.7.0"}
-	result, err2 := g.Default.Get(oids) // Get() accepts up to g.MAX_OIDS
+	result, err2 := params.Get(oids) // Get() accepts up to g.MAX_OIDS
 	if err2 != nil {
 		log.Fatalf("Get() err: %v", err2)
 	}

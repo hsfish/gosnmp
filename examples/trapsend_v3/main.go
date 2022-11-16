@@ -1,15 +1,17 @@
-// Copyright 2012-2014 The GoSNMP Authors. All rights reserved.  Use of this
+// Copyright 2012 The GoSNMP Authors. All rights reserved.  Use of this
 // source code is governed by a BSD-style license that can be found in the
 // LICENSE file.
 
 package main
 
 import (
+	_ "crypto/md5"
+	_ "crypto/sha1"
 	"log"
 	"os"
 	"time"
 
-	g "github.com/soniah/gosnmp"
+	g "github.com/gosnmp/gosnmp"
 )
 
 func main() {
@@ -24,7 +26,7 @@ func main() {
 		Timeout:       time.Duration(30) * time.Second,
 		SecurityModel: g.UserSecurityModel,
 		MsgFlags:      g.AuthPriv,
-		Logger:        log.New(os.Stdout, "", 0),
+		Logger:        g.NewLogger(log.New(os.Stdout, "", 0)),
 		SecurityParameters: &g.UsmSecurityParameters{UserName: "user",
 			AuthoritativeEngineID:    "1234",
 			AuthenticationProtocol:   g.SHA,
@@ -33,7 +35,6 @@ func main() {
 			PrivacyPassphrase:        "password",
 		},
 	}
-
 	err := params.Connect()
 	if err != nil {
 		log.Fatalf("Connect() err: %v", err)
