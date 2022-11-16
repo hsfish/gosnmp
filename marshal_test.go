@@ -1,7 +1,8 @@
-// Copyright 2012-2020 The GoSNMP Authors. All rights reserved.  Use of this
+// Copyright 2012 The GoSNMP Authors. All rights reserved.  Use of this
 // source code is governed by a BSD-style license that can be found in the
 // LICENSE file.
 
+//go:build all || marshal
 // +build all marshal
 
 package gosnmp
@@ -41,7 +42,7 @@ type testsEnmarshalVarbindPosition struct {
 		what's actually happening
 
 		2) for counting byte positions: select "Simple Network Management
-		Protocal" line in Wiresharks middle pane, then right click and choose
+		Protocol" line in Wiresharks middle pane, then right click and choose
 		"Export Packet Bytes..." (as .raw). Open the capture in wireshark, it
 		will decode as "BER Encoded File". Click on each varbind and the
 		"packet bytes" window will highlight the corresponding bytes, then the
@@ -166,7 +167,7 @@ var testsEnmarshal = []testsEnmarshalT{
 		0x37, // finish
 		[]testsEnmarshalVarbindPosition{
 			{".1.3.6.1.4.1.2863.205.1.1.75.2.0",
-				0x1e, 0x36, OctetString, "telnet"},
+				0x1e, 0x36, OctetString, []byte("telnet")},
 		},
 	},
 	// MrSpock Set stuff
@@ -234,7 +235,7 @@ var testsEnmarshal = []testsEnmarshalT{
 // vbPosPdus returns a slice of oids in the given test
 func vbPosPdus(test testsEnmarshalT) (pdus []SnmpPDU) {
 	for _, vbp := range test.vbPositions {
-		pdu := SnmpPDU{vbp.oid, vbp.pduType, vbp.pduValue, nil}
+		pdu := SnmpPDU{Name: vbp.oid, Type: vbp.pduType, Value: vbp.pduValue}
 		pdus = append(pdus, pdu)
 	}
 	return
@@ -269,11 +270,11 @@ func checkByteEquality(t *testing.T, test testsEnmarshalT, testBytes []byte,
 // ie check each varbind is working, then the varbind list, etc
 
 func TestEnmarshalVarbind(t *testing.T) {
-	Default.Logger = log.New(ioutil.Discard, "", 0)
+	Default.Logger = NewLogger(log.New(ioutil.Discard, "", 0))
 
 	for _, test := range testsEnmarshal {
 		for j, test2 := range test.vbPositions {
-			snmppdu := &SnmpPDU{test2.oid, test2.pduType, test2.pduValue, nil}
+			snmppdu := &SnmpPDU{Name: test2.oid, Type: test2.pduType, Value: test2.pduValue}
 			testBytes, err := marshalVarbind(snmppdu)
 			if err != nil {
 				t.Errorf("#%s:%d:%s err returned: %v",
@@ -286,7 +287,7 @@ func TestEnmarshalVarbind(t *testing.T) {
 }
 
 func TestEnmarshalVBL(t *testing.T) {
-	Default.Logger = log.New(ioutil.Discard, "", 0)
+	Default.Logger = NewLogger(log.New(ioutil.Discard, "", 0))
 
 	for _, test := range testsEnmarshal {
 		x := &SnmpPacket{
@@ -306,7 +307,7 @@ func TestEnmarshalVBL(t *testing.T) {
 }
 
 func TestEnmarshalPDU(t *testing.T) {
-	Default.Logger = log.New(ioutil.Discard, "", 0)
+	Default.Logger = NewLogger(log.New(ioutil.Discard, "", 0))
 
 	for _, test := range testsEnmarshal {
 		x := &SnmpPacket{
@@ -327,7 +328,7 @@ func TestEnmarshalPDU(t *testing.T) {
 }
 
 func TestEnmarshalMsg(t *testing.T) {
-	Default.Logger = log.New(ioutil.Discard, "", 0)
+	Default.Logger = NewLogger(log.New(ioutil.Discard, "", 0))
 
 	for _, test := range testsEnmarshal {
 		x := &SnmpPacket{
@@ -417,7 +418,7 @@ var testsUnmarshal = []struct {
 				{
 					Name:  ".1.3.6.1.2.1.1.3.0",
 					Type:  TimeTicks,
-					Value: 318870100,
+					Value: uint32(318870100),
 				},
 			},
 		},
@@ -454,7 +455,7 @@ var testsUnmarshal = []struct {
 				{
 					Name:  ".1.3.6.1.2.1.2.2.1.9.3",
 					Type:  TimeTicks,
-					Value: 2970,
+					Value: uint32(2970),
 				},
 				{
 					Name:  ".1.3.6.1.2.1.3.1.1.2.10.1.10.11.0.17",
@@ -644,7 +645,7 @@ var testsUnmarshal = []struct {
 				{
 					Name:  ".1.3.6.1.2.1.31.1.1.1.10.1",
 					Type:  Counter64,
-					Value: 1527943,
+					Value: uint64(1527943),
 				},
 			},
 		},
@@ -662,6 +663,23 @@ var testsUnmarshal = []struct {
 					Name:  ".1.3.6.1.4.1.6574.4.2.12.1.0",
 					Type:  OpaqueFloat,
 					Value: float32(10.0),
+				},
+			},
+		},
+	},
+	{opaqueResponse,
+		&SnmpPacket{
+			Version:    Version1,
+			Community:  "public",
+			PDUType:    GetResponse,
+			RequestID:  2033938493,
+			Error:      0,
+			ErrorIndex: 0,
+			Variables: []SnmpPDU{
+				{
+					Name:  ".1.3.6.1.4.1.34187.74195.2.1.24590",
+					Type:  Opaque,
+					Value: []byte{0x41, 0xf0, 0x00, 0x00},
 				},
 			},
 		},
@@ -714,7 +732,7 @@ var testsUnmarshal = []struct {
 }
 
 func TestUnmarshal(t *testing.T) {
-	Default.Logger = log.New(ioutil.Discard, "", 0)
+	Default.Logger = NewLogger(log.New(ioutil.Discard, "", 0))
 
 	for i, test := range testsUnmarshal {
 		funcName := runtime.FuncForPC(reflect.ValueOf(test.in).Pointer()).Name()
@@ -771,7 +789,7 @@ func TestUnmarshal(t *testing.T) {
 						if vbval.Cmp(vbrval) != 0 {
 							t.Errorf("#%d:%d Value result: %v, test: %v", i, n, vbr.Value, vb.Value)
 						}
-					case OctetString:
+					case OctetString, Opaque:
 						if !bytes.Equal(vb.Value.([]byte), vbr.Value.([]byte)) {
 							t.Errorf("#%d:%d Value result: %v, test: %v", i, n, vbr.Value, vb.Value)
 						}
@@ -1307,6 +1325,32 @@ func counter64Response() []byte {
 }
 
 /*
+Issue 370, test Opaque.
+
+Simple Network Management Protocol
+    version: 1 (1)
+    community: public
+    data: get-response (2)
+        get-response
+            request-id: 2033938493
+            error-status: noError (0)
+            error-index: 0
+            variable-bindings: 1 item
+                1.3.6.1.4.1.34187.74195.2.1.24590: 41f00000
+                    Object Name: 1.3.6.1.4.1.34187.74195.2.1.24590 (iso.3.6.1.4.1.34187.74195.2.1.24590)
+                    Value (Opaque): 41f00000
+*/
+func opaqueResponse() []byte {
+	return []byte{
+		0x30, 0x35, 0x02, 0x01, 0x00, 0x04, 0x06, 0x70, 0x75, 0x62, 0x6c, 0x69,
+		0x63, 0xa2, 0x28, 0x02, 0x04, 0x79, 0x3b, 0x70, 0x3d, 0x02, 0x01, 0x00,
+		0x02, 0x01, 0x00, 0x30, 0x1a, 0x30, 0x18, 0x06, 0x10, 0x2b, 0x06, 0x01,
+		0x04, 0x01, 0x82, 0x8b, 0x0b, 0x84, 0xc3, 0x53, 0x02, 0x01, 0x81, 0xc0,
+		0x0e, 0x44, 0x04, 0x41, 0xf0, 0x00, 0x00,
+	}
+}
+
+/*
 Opaque Float, observed from Synology NAS UPS MIB
  snmpget -v 2c -c public host 1.3.6.1.4.1.6574.4.2.12.1.0
 */
@@ -1328,7 +1372,7 @@ func opaqueDoubleResponse() []byte {
 	return []byte{
 		0x30, 0x38, 0x02, 0x01, 0x01, 0x04, 0x06, 0x70, 0x75, 0x62, 0x6c, 0x69,
 		0x63, 0xa2, 0x2b, 0x02, 0x04, 0x23, 0xd5, 0xd7, 0x05, 0x02, 0x01, 0x00,
-		0x02, 0x01, 0x00, 0x30, 0x1d, 0x30, 0x17, 0x06, 0x0c, 0x2b, 0x06, 0x01,
+		0x02, 0x01, 0x00, 0x30, 0x1d, 0x30, 0x1b, 0x06, 0x0c, 0x2b, 0x06, 0x01,
 		0x04, 0x01, 0xb3, 0x2e, 0x04, 0x02, 0x0c, 0x01, 0x00, 0x44, 0x0b, 0x9f,
 		0x79, 0x08, 0x40, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	}
@@ -1345,7 +1389,7 @@ func TestUnmarshalEmptyPanic(t *testing.T) {
 }
 
 func TestV3USMInitialPacket(t *testing.T) {
-	logger := log.New(ioutil.Discard, "", 0)
+	logger := NewLogger(log.New(ioutil.Discard, "", 0))
 	var emptyPdus []SnmpPDU
 	blankPacket := &SnmpPacket{
 		Version:            Version3,
@@ -1360,7 +1404,7 @@ func TestV3USMInitialPacket(t *testing.T) {
 	if err != nil {
 		t.Errorf("#TestV3USMInitialPacket: marshalMsg() err returned: %v", err)
 	}
-	engine := GoSNMP{Logger: logger}
+	engine := GoSNMP{Logger: Default.Logger}
 	pktNew, errDecode := engine.SnmpDecodePacket(iBytes)
 	if errDecode != nil {
 		t.Logf("-->Bytes=%v", iBytes)
@@ -1373,6 +1417,9 @@ func TestV3USMInitialPacket(t *testing.T) {
 
 func TestSendOneRequest_dups(t *testing.T) {
 	srvr, err := net.ListenUDP("udp4", &net.UDPAddr{})
+	if err != nil {
+		t.Fatalf("udp4 error listening: %s", err)
+	}
 	defer srvr.Close()
 
 	x := &GoSNMP{
@@ -1432,7 +1479,8 @@ func TestSendOneRequest_dups(t *testing.T) {
 	}()
 
 	pdus := []SnmpPDU{{Name: ".1.2", Type: Null}}
-	reqPkt := x.mkSnmpPacket(GetResponse, pdus, 0, 0) //not actually a GetResponse, but we need something our test server can unmarshal
+	// This is not actually a GetResponse, but we need something our test server can unmarshal.
+	reqPkt := x.mkSnmpPacket(GetResponse, pdus, 0, 0)
 
 	_, err = x.sendOneRequest(reqPkt, true)
 	if err != nil {
@@ -1451,6 +1499,9 @@ func BenchmarkSendOneRequest(b *testing.B) {
 	b.StopTimer()
 
 	srvr, err := net.ListenUDP("udp4", &net.UDPAddr{})
+	if err != nil {
+		b.Fatalf("udp4 error listening: %s", err)
+	}
 	defer srvr.Close()
 
 	x := &GoSNMP{
@@ -1495,6 +1546,90 @@ func BenchmarkSendOneRequest(b *testing.B) {
 			b.Fatalf("error: %s", err)
 			return
 		}
+	}
+}
+
+func TestUnconnectedSocket_fail(t *testing.T) {
+	withUnconnectedSocket(t, false)
+}
+
+func TestUnconnectedSocket_success(t *testing.T) {
+	withUnconnectedSocket(t, true)
+}
+
+func withUnconnectedSocket(t *testing.T, enable bool) {
+	srvr, err := net.ListenUDP("udp", &net.UDPAddr{})
+	if err != nil {
+		t.Fatalf("udp error listening: %s", err)
+	}
+	defer srvr.Close()
+
+	x := &GoSNMP{
+		Version:                 Version2c,
+		Target:                  srvr.LocalAddr().(*net.UDPAddr).IP.String(),
+		Port:                    uint16(srvr.LocalAddr().(*net.UDPAddr).Port),
+		Timeout:                 time.Millisecond * 100,
+		Retries:                 2,
+		UseUnconnectedUDPSocket: enable,
+		LocalAddr:               "0.0.0.0:",
+	}
+	if err := x.Connect(); err != nil {
+		t.Fatalf("error connecting: %s", err)
+	}
+	defer x.Conn.Close()
+
+	go func() {
+		buf := make([]byte, 256)
+		for {
+			n, addr, err := srvr.ReadFrom(buf)
+			if err != nil {
+				return
+			}
+			buf := buf[:n]
+
+			var reqPkt SnmpPacket
+			var cursor int
+			cursor, err = x.unmarshalHeader(buf, &reqPkt)
+			if err != nil {
+				t.Errorf("error: %s", err)
+			}
+			err = x.unmarshalPayload(buf, cursor, &reqPkt)
+			if err != nil {
+				t.Errorf("error: %s", err)
+			}
+
+			rspPkt := x.mkSnmpPacket(GetResponse, []SnmpPDU{
+				{
+					Name:  ".1.2",
+					Type:  Integer,
+					Value: 123,
+				},
+			}, 0, 0)
+			rspPkt.RequestID = reqPkt.RequestID
+			outBuf, err := rspPkt.marshalMsg()
+			if err != nil {
+				t.Errorf("ERR: %s", err)
+			}
+			// Temporary socket will use different source port, it's enough to break
+			// connected socket reply filters.
+			nsock, err := net.ListenUDP("udp", nil)
+			if err != nil {
+				t.Errorf("can't create temporary reply socket: %v", err)
+			}
+			nsock.WriteTo(outBuf, addr)
+			nsock.Close()
+		}
+	}()
+
+	pdus := []SnmpPDU{{Name: ".1.2", Type: Null}}
+	// This is not actually a GetResponse, but we need something our test server can unmarshal.
+	reqPkt := x.mkSnmpPacket(GetResponse, pdus, 0, 0)
+
+	_, err = x.sendOneRequest(reqPkt, true)
+	if err != nil && enable {
+		t.Errorf("with unconnected socket enabled got unexpected error: %v", err)
+	} else if err == nil && !enable {
+		t.Errorf("with unconnected socket disabled didn't get an error")
 	}
 }
 
@@ -1634,7 +1769,7 @@ func dumpBytes1(data []byte, msg string, maxlength int) {
 	if len(data) < maxlength {
 		length = len(data)
 	}
-	length *= 2 //One Byte Symobls Two Hex
+	length *= 2 //One Byte Symbols Two Hex
 	hexStr := hex.EncodeToString(data)
 	for i := 0; length >= i+16; i += 16 {
 		buffer.WriteString("\n")

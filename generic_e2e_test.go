@@ -1,4 +1,4 @@
-// Copyright 2012-2020 The GoSNMP Authors. All rights reserved.  Use of this
+// Copyright 2012 The GoSNMP Authors. All rights reserved.  Use of this
 // source code is governed by a BSD-style license that can be found in the
 // LICENSE file.
 
@@ -9,6 +9,7 @@
 // Ensure "gosnmp-test-host" is defined in your hosts file, and points to your
 // generic test system.
 
+//go:build all || end2end
 // +build all end2end
 
 package gosnmp
@@ -59,6 +60,21 @@ func setupConnection(t *testing.T) {
 	Default.Port = port
 
 	err := Default.Connect()
+	if err != nil {
+		if len(target) > 0 {
+			t.Fatalf("Connection failed. Is snmpd reachable on %s:%d?\n(err: %v)",
+				target, port, err)
+		}
+	}
+}
+
+func setupConnectionInstance(gs *GoSNMP, t *testing.T) {
+	target, port := getTarget(t)
+
+	gs.Target = target
+	gs.Port = port
+
+	err := gs.Connect()
 	if err != nil {
 		if len(target) > 0 {
 			t.Fatalf("Connection failed. Is snmpd reachable on %s:%d?\n(err: %v)",
@@ -237,6 +253,20 @@ func TestGenericBulkWalk(t *testing.T) {
 	}
 }
 
+func TestV1BulkWalkError(t *testing.T) {
+	g := &GoSNMP{
+		Version: Version1,
+	}
+	setupConnectionInstance(g, t)
+
+	g.Conn.Close()
+
+	_, err := g.BulkWalkAll("")
+	if err == nil {
+		t.Fatalf("BulkWalkAll() should fail in SNMPv1 but returned nil")
+	}
+}
+
 // Standard exception/error tests
 
 func TestMaxOids(t *testing.T) {
@@ -289,9 +319,10 @@ func TestGenericFailureUnknownHost(t *testing.T) {
 }
 
 func TestGenericFailureConnectionTimeout(t *testing.T) {
+	t.Skip("local testing - skipping this slow one") // TODO test tag, or something
 	envTarget := os.Getenv("GOSNMP_TARGET")
 	if len(envTarget) <= 0 {
-		t.Skip("local testing - skipping this slow one") // TODO test tag, or something
+		t.Skip("local testing - skipping this slow one")
 	}
 
 	Default.Target = "198.51.100.1" // Black hole
@@ -339,9 +370,6 @@ func TestSnmpV3NoAuthNoPrivBasicGet(t *testing.T) {
 	if len(result.Variables) != 1 {
 		t.Fatalf("Expected result of size 1")
 	}
-	if result.Variables[0].Type != OctetString {
-		t.Fatalf("Expected sysDescr to be OctetString")
-	}
 	sysDescr := result.Variables[0].Value.([]byte)
 	if len(sysDescr) == 0 {
 		t.Fatalf("Got a zero length sysDescr")
@@ -349,6 +377,9 @@ func TestSnmpV3NoAuthNoPrivBasicGet(t *testing.T) {
 }
 
 func TestSnmpV3AuthMD5NoPrivGet(t *testing.T) {
+	if !isUsingSnmpLabs() {
+		t.Skip("This test is currently only working when using demo.snmplabs.com as test device.")
+	}
 	Default.Version = Version3
 	Default.MsgFlags = AuthNoPriv
 	Default.SecurityModel = UserSecurityModel
@@ -373,6 +404,9 @@ func TestSnmpV3AuthMD5NoPrivGet(t *testing.T) {
 }
 
 func TestSnmpV3AuthMD5PrivAES256CGet(t *testing.T) {
+	if !isUsingSnmpLabs() {
+		t.Skip("This test is currently only working when using demo.snmplabs.com as test device.")
+	}
 	Default.Version = Version3
 	Default.MsgFlags = AuthPriv
 	Default.SecurityModel = UserSecurityModel
@@ -401,6 +435,9 @@ func TestSnmpV3AuthMD5PrivAES256CGet(t *testing.T) {
 }
 
 func TestSnmpV3AuthSHANoPrivGet(t *testing.T) {
+	if !isUsingSnmpLabs() {
+		t.Skip("This test is currently only working when using demo.snmplabs.com as test device.")
+	}
 	Default.Version = Version3
 	Default.MsgFlags = AuthNoPriv
 	Default.SecurityModel = UserSecurityModel
@@ -425,6 +462,9 @@ func TestSnmpV3AuthSHANoPrivGet(t *testing.T) {
 }
 
 func TestSnmpV3AuthSHAPrivAESGet(t *testing.T) {
+	if !isUsingSnmpLabs() {
+		t.Skip("This test is currently only working when using demo.snmplabs.com as test device.")
+	}
 	Default.Version = Version3
 	Default.MsgFlags = AuthPriv
 	Default.SecurityModel = UserSecurityModel
@@ -453,6 +493,9 @@ func TestSnmpV3AuthSHAPrivAESGet(t *testing.T) {
 }
 
 func TestSnmpV3AuthSHAPrivAES256CGet(t *testing.T) {
+	if !isUsingSnmpLabs() {
+		t.Skip("This test is currently only working when using demo.snmplabs.com as test device.")
+	}
 	Default.Version = Version3
 	Default.MsgFlags = AuthPriv
 	Default.SecurityModel = UserSecurityModel
@@ -683,6 +726,9 @@ func TestSnmpV3AuthSHA512PrivAES256CGet(t *testing.T) {
 }
 
 func TestSnmpV3AuthMD5PrivDESGet(t *testing.T) {
+	if !isUsingSnmpLabs() {
+		t.Skip("This test is currently only working when using demo.snmplabs.com as test device.")
+	}
 	Default.Version = Version3
 	Default.MsgFlags = AuthPriv
 	Default.SecurityModel = UserSecurityModel
@@ -713,6 +759,9 @@ func TestSnmpV3AuthMD5PrivDESGet(t *testing.T) {
 }
 
 func TestSnmpV3AuthSHAPrivDESGet(t *testing.T) {
+	if !isUsingSnmpLabs() {
+		t.Skip("This test is currently only working when using demo.snmplabs.com as test device.")
+	}
 	Default.Version = Version3
 	Default.MsgFlags = AuthPriv
 	Default.SecurityModel = UserSecurityModel
@@ -742,6 +791,9 @@ func TestSnmpV3AuthSHAPrivDESGet(t *testing.T) {
 }
 
 func TestSnmpV3AuthMD5PrivAESGet(t *testing.T) {
+	if !isUsingSnmpLabs() {
+		t.Skip("This test is currently only working when using demo.snmplabs.com as test device.")
+	}
 	Default.Version = Version3
 	Default.MsgFlags = AuthPriv
 	Default.SecurityModel = UserSecurityModel
@@ -772,6 +824,9 @@ func TestSnmpV3AuthMD5PrivAESGet(t *testing.T) {
 }
 
 func TestSnmpV3PrivEmptyPrivatePassword(t *testing.T) {
+	if !isUsingSnmpLabs() {
+		t.Skip("This test is currently only working when using demo.snmplabs.com as test device.")
+	}
 	Default.Version = Version3
 	Default.MsgFlags = AuthPriv
 	Default.SecurityModel = UserSecurityModel
@@ -788,6 +843,9 @@ func TestSnmpV3PrivEmptyPrivatePassword(t *testing.T) {
 }
 
 func TestSnmpV3AuthNoPrivEmptyPrivatePassword(t *testing.T) {
+	if !isUsingSnmpLabs() {
+		t.Skip("This test is currently only working when using demo.snmplabs.com as test device.")
+	}
 	Default.Version = Version3
 	Default.MsgFlags = AuthNoPriv
 	Default.SecurityModel = UserSecurityModel
@@ -801,5 +859,4 @@ func TestSnmpV3AuthNoPrivEmptyPrivatePassword(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected validation error for empty PrivacyPassphrase")
 	}
-
 }
