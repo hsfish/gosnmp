@@ -1,4 +1,4 @@
-module github.com/gosnmp/gosnmp
+module github.com/hsfish/gosnmp
 
 go 1.17
 
