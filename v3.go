@@ -79,12 +79,12 @@ func (packet *SnmpPacket) authenticate(msg []byte) ([]byte, error) {
 	if packet.Version != Version3 {
 		return msg, nil
 	}
-	if packet.MsgFlags&AuthNoPriv > 0 {
-		err := packet.SecurityParameters.authenticate(msg)
-		if err != nil {
-			return nil, err
-		}
-	}
+	//if packet.MsgFlags&AuthNoPriv > 0 {
+	//	err := packet.SecurityParameters.authenticate(msg)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
 
 	return msg, nil
 }
