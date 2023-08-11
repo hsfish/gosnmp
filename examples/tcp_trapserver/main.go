@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	gosnmp "github.com/gosnmp/gosnmp"
+	"github.com/hsfish/gosnmp"
 )
 
 func main() {

@@ -109,7 +109,7 @@ type GoSNMP struct {
 	// MaxRepetitions sets the GETBULK max-repetitions used by BulkWalk*
 	// Unless MaxRepetitions is specified it will use defaultMaxRepetitions (50)
 	// This may cause issues with some devices, if so set MaxRepetitions lower.
-	// See comments in https://github.com/gosnmp/gosnmp/issues/100
+	// See comments in https://github.com/hsfish/gosnmp/issues/100
 	MaxRepetitions uint32
 
 	// NonRepeaters sets the GETBULK max-repeaters used by BulkWalk*.
@@ -685,10 +685,18 @@ func ToBigInt(value interface{}) *big.Int {
 	return big.NewInt(val)
 }
 
-func ToString(asn1 Asn1BER, value interface{}) string {
+const (
+	ValTypePhysAddress = "physAddress"
+)
+
+func ToString(asn1 Asn1BER, value interface{}, typ ...string) string {
 	switch asn1 {
 	case OctetString:
 		bs := value.([]byte)
+		if len(typ) > 0 && typ[0] == ValTypePhysAddress {
+			return toHexStr(bs, ":")
+		}
+
 		for _, c := range bs {
 			switch {
 			case c >= 0x20 && c <= 0x7e:

@@ -1820,3 +1820,27 @@ func dumpBytes2(desc string, bb []byte, cursor int) string {
 	}
 	return result
 }
+
+func TestParse(t *testing.T) {
+	arr := []string{
+		`48 61 2 1 1 4 18 113 108 122 113 115 110 109 112 106 121 54 56 56 56 57 51 57 53 162 36 2 4 62 224 119 160 2 1 0 2 1 0 48 22 48 20 6 10 43 6 1 2 1 2 2 1 6 1 4 6 48 95 119 77 58 26`,
+		`48 61 2 1 1 4 18 113 108 122 113 115 110 109 112 106 121 54 56 56 56 57 51 57 53 162 36 2 4 92 231 207 52 2 1 0 2 1 0 48 22 48 20 6 10 43 6 1 2 1 2 2 1 6 11 4 6 48 95 119 77 58 36`,
+	}
+
+	for _, str := range arr {
+		var resp []byte
+		for _, b := range strings.Split(str, " ") {
+			bi, _ := strconv.Atoi(b)
+			resp = append(resp, byte(bi))
+		}
+
+		result := new(SnmpPacket)
+		cursor, err := Default.unmarshalHeader(resp, result)
+		fmt.Println(cursor, err)
+
+		Default.unmarshalPayload(resp, cursor, result)
+		v := result.Variables[0]
+		fmt.Println(ToString(v.Type, v.Value, ValTypePhysAddress))
+	}
+
+}
