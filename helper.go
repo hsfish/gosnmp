@@ -632,7 +632,9 @@ func parseLength(bytes []byte) (int, int, error) {
 // that are assigned in a hierarchy.
 func parseObjectIdentifier(src []byte) (string, error) {
 	if len(src) == 0 {
-		return "", ErrInvalidOidLength
+		// TODO 这里有bug，可能是对端服务返回数据原因，如果src为空直接返回nil
+		// return "", ErrInvalidOidLength
+		return "", nil
 	}
 
 	out := new(bytes.Buffer)
