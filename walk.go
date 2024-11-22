@@ -144,17 +144,24 @@ RequestLoop:
 				break RequestLoop
 			}
 
-			if checkIncreasing && pdu.Name == oid {
-				return fmt.Errorf("OID not increasing: %s", pdu.Name)
+			// if the current oid is the same as the previous oid, then we have a problem
+			if pdu.Name == oid {
+				x.Logger.Printf("OID not increasing: %v, rootOid: %v", pdu.Name, rootOid)
+				if checkIncreasing {
+					return fmt.Errorf("OID not increasing: %s", pdu.Name)
+				}
+				return nil
 			}
 
 			// Report our pdu
 			if err := walkFn(pdu); err != nil {
 				return err
 			}
+
+			// Save last oid for next request
+			oid = pdu.Name
 		}
-		// Save last oid for next request
-		oid = response.Variables[len(response.Variables)-1].Name
+
 	}
 	x.Logger.Printf("BulkWalk completed in %d requests", requests)
 	return nil
