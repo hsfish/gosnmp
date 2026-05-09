@@ -151,8 +151,12 @@ RequestLoop:
 				break RequestLoop
 			}
 
-			if checkIncreasing && oidCompare(oid, pdu.Name) >= 0 {
-				return fmt.Errorf("OID not increasing: %s >= %s", oid, pdu.Name)
+			if oidCompare(oid, pdu.Name) >= 0 {
+				x.Logger.Printf("[W] OID not increasing: target=%s:%d, oid=%s, pdu=%s, rootOid=%s", x.Target, x.Port, oid, pdu.Name, rootOid)
+				if checkIncreasing {
+					return fmt.Errorf("OID not increasing: %s >= %s", oid, pdu.Name)
+				}
+				return nil
 			}
 
 			// Report our pdu
@@ -170,6 +174,10 @@ RequestLoop:
 func (x *GoSNMP) walkAll(getRequestType PDUType, rootOid string) (results []SnmpPDU, err error) {
 	err = x.walk(getRequestType, rootOid, func(dataUnit SnmpPDU) error {
 		results = append(results, dataUnit)
+		if len(results) == 10000 {
+			x.Logger.Printf("[W] walkAll results exceed 10000: target=%s:%d, oid=%s, count=%d",
+				x.Target, x.Port, rootOid, len(results))
+		}
 		return nil
 	})
 	return results, err
