@@ -11,3 +11,9 @@ func (l *Logger) Print(v ...interface{}) {
 
 func (l *Logger) Printf(format string, v ...interface{}) {
 }
+
+func (l *Logger) Warn(format string, v ...interface{}) {
+}
+
+func (l *Logger) Error(format string, v ...interface{}) {
+}

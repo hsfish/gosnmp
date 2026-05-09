@@ -14,3 +14,15 @@ func (l *Logger) Printf(format string, v ...interface{}) {
 		l.logger.Printf(format, v...)
 	}
 }
+
+func (l *Logger) Warn(format string, v ...interface{}) {
+	if l.logger != nil {
+		l.logger.Printf(format, v...)
+	}
+}
+
+func (l *Logger) Error(format string, v ...interface{}) {
+	if l.logger != nil {
+		l.logger.Printf(format, v...)
+	}
+}

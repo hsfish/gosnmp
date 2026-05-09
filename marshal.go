@@ -142,6 +142,8 @@ const rxBufSize = 65535 // max size of IPv4 & IPv6 packet
 type LoggerInterface interface {
 	Print(v ...interface{})
 	Printf(format string, v ...interface{})
+	Warn(format string, v ...interface{})
+	Error(format string, v ...interface{})
 }
 
 type Logger struct {
