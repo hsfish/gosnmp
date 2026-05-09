@@ -10,8 +10,15 @@ import (
 )
 
 func (x *GoSNMP) walk(getRequestType PDUType, rootOid string, walkFn WalkFunc) error {
+	// If no rootOid is provided, fall back to the 'internet' subtree (.1.3.6.1).
+	// This ensures visibility of both standard (e.g. MIB-2) and vendor-specific branches.
+	// It also guarantees the OID is valid for BER encoding:
+	// - RFC 2578 §7.1.3: OIDs must have at least two sub-identifiers
+	// - X.690 §8.19: the first two arcs are encoded as (40 * arc1 + arc2)
 	if rootOid == "" || rootOid == "." {
-		rootOid = baseOid
+		// IANA 'internet' subtree under ISO OID structure per X.660.
+		// See https://oidref.com/1.3.6.1
+		rootOid = ".1.3.6.1"
 	}
 
 	if !strings.HasPrefix(rootOid, ".") {
@@ -144,24 +151,17 @@ RequestLoop:
 				break RequestLoop
 			}
 
-			// if the current oid is the same as the previous oid, then we have a problem
-			if pdu.Name == oid {
-				x.Logger.Printf("OID not increasing: %v, rootOid: %v", pdu.Name, rootOid)
-				if checkIncreasing {
-					return fmt.Errorf("OID not increasing: %s", pdu.Name)
-				}
-				return nil
+			if checkIncreasing && oidCompare(oid, pdu.Name) >= 0 {
+				return fmt.Errorf("OID not increasing: %s >= %s", oid, pdu.Name)
 			}
 
 			// Report our pdu
 			if err := walkFn(pdu); err != nil {
 				return err
 			}
-
-			// Save last oid for next request
-			oid = pdu.Name
 		}
-
+		// Save last oid for next request
+		oid = response.Variables[len(response.Variables)-1].Name
 	}
 	x.Logger.Printf("BulkWalk completed in %d requests", requests)
 	return nil
@@ -173,4 +173,60 @@ func (x *GoSNMP) walkAll(getRequestType PDUType, rootOid string) (results []Snmp
 		return nil
 	})
 	return results, err
+}
+
+// oidCompare compares two OID strings lexicographically.
+// Returns -1 if oid1 < oid2, 0 if equal, 1 if oid1 > oid2.
+// This matches net-snmp's snmp_oid_compare semantics.
+//
+// OIDs are compared component by component as unsigned integers.
+// A shorter OID is considered less than a longer OID when all
+// components of the shorter OID match the prefix of the longer OID.
+func oidCompare(oid1, oid2 string) int {
+	pos1, pos2 := 0, 0
+	for {
+		comp1, newPos1, ok1 := nextOIDComponent(oid1, pos1)
+		comp2, newPos2, ok2 := nextOIDComponent(oid2, pos2)
+		pos1, pos2 = newPos1, newPos2
+
+		switch {
+		case !ok1 && !ok2:
+			return 0
+		case !ok1:
+			return -1
+		case !ok2:
+			return 1
+		}
+
+		if comp1 != comp2 {
+			if comp1 < comp2 {
+				return -1
+			}
+			return 1
+		}
+	}
+}
+
+// nextOIDComponent parses the next OID component starting at pos.
+// Returns the component value, the new position, and whether a component was found.
+func nextOIDComponent(oid string, pos int) (uint32, int, bool) {
+	if pos < len(oid) && oid[pos] == '.' {
+		pos++
+	}
+	if pos >= len(oid) {
+		return 0, pos, false
+	}
+
+	var val uint32
+	start := pos
+	for pos < len(oid) && oid[pos] >= '0' && oid[pos] <= '9' {
+		val = val*10 + uint32(oid[pos]-'0')
+		pos++
+	}
+
+	if pos == start {
+		return 0, pos, false
+	}
+
+	return val, pos, true
 }
